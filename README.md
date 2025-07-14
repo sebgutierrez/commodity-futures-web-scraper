@@ -1,1 +1,1 @@
-# commodity-futures-web-scraper
+Experimenting with web scraping using Python, Requests, BeautifulSoup, and Selenium.
