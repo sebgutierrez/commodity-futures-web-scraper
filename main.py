@@ -1,34 +1,11 @@
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup as btfs
 import requests
 import pandas as pd
-import random
+from datetime import date
 
-# from selenium import webdriver
-# from selenium.webdriver.chrome.options import Options
-# from selenium.webdriver.chrome.service import Service
-
-# from selenium.webdriver.chrome.service import Service as ChromiumService
-# from webdriver_manager.chrome import ChromeDriverManager
-
-# options = Options()
-# options.add_argument('--headless')
-# options.add_argument('--no-sandbox')
-# options.add_argument('--disable-dev-shm-usage')
-# options.add_argument('user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 (compatible; commodity-futures-bot/1.0)')
-# driver = webdriver.Chrome(service=ChromiumService(ChromeDriverManager().install()), options=options)
-
-session = requests.Session()
-session.headers.update({'User-Agent': 'commodity-futures-bot/1.0'})
-
-url = 'https://www.investing.com/commodities/crude-oil-historical-data'
-
-try:
-    response = session.get(url)
-    response.raise_for_status() 
-    soup = BeautifulSoup(response.content, 'html.parser')
     ### General Overview
     # https://www.investing.com/commodities/crude-oil
-    h2 = soup.find('h2')
+    #h2 = soup.find('h2')
 
     # div data-test="instrument-header-details"
     ### div data-test="instrument-price-last"
@@ -53,11 +30,64 @@ try:
     ### div (dt span Base Symbol) // div (dd T) ;        data-test=base_symbol
     ### div (dt span Point Value) // div (dd 1 = $1000)   ; data-test=point_value
 
-    ### General Historical Data
-    # https://www.investing.com/commodities/crude-oil-historical-data
+def request_historical_data(session, url):
+    try:
+        response = session.get(url)
+        response.raise_for_status() 
+        soup = btfs(response.text, 'html.parser')
 
+        table = soup.find('table', class_='freeze-column-w-1')
 
-except requests.exceptions.HTTPError as e:
-    print(f"HTTP Error: {e}")
-except requests.exceptions.RequestException as e:
-    print(f"An error occurred: {e}")
+        cols = []
+        for th in table.thead.tr.find_all('th'):
+            if th.div.button.span.string != 'Date':
+                cols.append(th.div.button.span.string)
+
+        tbody = table.tbody
+
+        rows = []
+        indices = []
+        for tr in tbody.find_all('tr'):
+            row = []
+            for td in tr.find_all('td'):
+                if td.time:
+                    indices.append(td.time['datetime'])
+                    continue
+                row.append(td.string)
+            rows.append(row)
+            
+        stats_summary = {}
+
+        stats_grid = soup.find('div', class_=['md:after:content-none'])
+
+        for stat in stats_grid.find_all('div'):
+            if stat.div:
+                name = ''
+                for string in stat.div.strings:
+                    name = string
+                    break
+                value = stat.div.next_sibling.string
+
+                stats_summary[name] = value
+        
+        df = pd.DataFrame(rows, columns=cols, index=indices)
+        df.attrs = stats_summary
+        return df
+    except requests.exceptions.HTTPError as e:
+        print(f"HTTP Error: {e}")
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+
+def get_commodity_history(session):
+    commodities = ['crude-oil', 'natural-gas', 'copper', 'gold']
+    for commodity in commodities:
+        base_url = 'https://www.investing.com/commodities/'
+        history_url = base_url + commodity + '-historical-data'
+        df = request_historical_data(session, history_url)
+        filename = f'{commodity}-historical-{date.today()}.pkl'
+        df.to_pickle(filename)
+
+session = requests.Session()
+session.headers.update({'User-Agent': 'commodity-futures-bot/1.0'})
+
+get_commodity_history(session)
