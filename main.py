@@ -2,33 +2,57 @@ from bs4 import BeautifulSoup as btfs
 import requests
 import pandas as pd
 from datetime import date
+from datetime import datetime, timezone
+
+def request_general_overview_data(session, url):
 
     ### General Overview
     # https://www.investing.com/commodities/crude-oil
-    #h2 = soup.find('h2')
+    response = session.get(url)
+    response.raise_for_status() 
+    soup = btfs(response.text, 'html.parser')
 
-    # div data-test="instrument-header-details"
-    ### div data-test="instrument-price-last"
-    ### div data-test="instrument-price-change"
-    ### data-test="instrument-price-change-percent"
+    header_details = soup.find('div', attrs={'data-test': 'instrument-header-details'})
 
-    ## dl button dl
+    price_last = header_details.find('div', attrs={'data-test': 'instrument-price-last'}).string
+    print("price_last: ", price_last)
+    price_change = ''
+    for string in header_details.find('span', attrs={'data-test': 'instrument-price-change'}).strings:
+        if string != '+':
+            price_change = string
+    print("price_change: ", price_change)
+    price_change_percent = ''
+    
+    for string in header_details.find('div', attrs={'data-test': 'instrument-price-change-percentage'}).strings:
+        if string != '(' or string != '%)':
+            price_change_percent = string
+            break
 
-    # div data-test="key-info"
+    print("price_change_percent: ", price_change_percent)
 
-    ## dl 
-    ### div (dt div div span Prev. Close) // div (dd span span[1])   ; data-test=prevClose
-    ### div (dt div div span Open) // div (dd span span[1])   ; data-test=open
-    ### div (dt span Day's Range) // div (dd (span[0] span[1]) + span[1] (-) + (span[2] span[1]))   ; data-test=dailyRange
-    ### div (dt span 52 wk Range) // div (dd (span[0] span[1]) + span[1] (-) + (span[2] span[1]))   ; data-test=weekRange
-    ### div (dt div div span Volume) // div (dd span span[1])    ; data-test=volume
-    ### div (dt div div span 1-Year Change) // div (dd span span[1] -17.6 span[2] %)   ; data-test=oneYearReturn
-    ### div (dt span Month) // div (dd Aug 25)   ;         data-test=month_date
+    time_label = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    print("time_label: ", time_label)
 
-    ## dl 
-    ### div (dt span Settlement Day) // div (dd 07/21/2025)     ;    data-test=settlement_date
-    ### div (dt span Base Symbol) // div (dd T) ;        data-test=base_symbol
-    ### div (dt span Point Value) // div (dd 1 = $1000)   ; data-test=point_value
+    extracted_data = {}
+
+    dl_tag = soup.find('dl')
+
+    if dl_tag:
+
+        for div in dl_tag.find_all('div', recursive=False):
+            dt_tag = div.find('dt')
+            dd_tag = div.find('dd')
+
+            if dd_tag and 'data-test' in dd_tag.attrs:
+                data_test_attribute = dd_tag['data-test']
+                extracted_data[data_test_attribute] = dd_tag.text.strip()
+            elif dt_tag and 'data-test' in dt_tag.attrs:
+                data_test_attribute = dt_tag['data-test']
+                extracted_data[data_test_attribute] = dt_tag.text.strip()
+
+    # Print the extracted data to verify
+    for key, value in extracted_data.items():
+        print(f"{key}: {value}")
 
 def request_historical_data(session, url):
     try:
@@ -79,13 +103,18 @@ def request_historical_data(session, url):
         print(f"An error occurred: {e}")
 
 def get_commodity_history(session):
-    commodities = ['crude-oil', 'natural-gas', 'copper', 'gold']
-    for commodity in commodities:
-        base_url = 'https://www.investing.com/commodities/'
-        history_url = base_url + commodity + '-historical-data'
-        df = request_historical_data(session, history_url)
-        filename = f'{commodity}-historical-{date.today()}.pkl'
-        df.to_pickle(filename)
+    # commodities = ['crude-oil', 'natural-gas', 'copper', 'gold']
+    commodities = ['crude-oil']
+    base_url = 'https://www.investing.com/commodities/'
+    # for commodity in commodities:
+    #     history_url = base_url + commodity + '-historical-data'
+    #     df = request_historical_data(session, history_url)
+    #     filename = f'{commodity}-historical-{date.today()}.pkl'
+    #     df.to_pickle(filename)
+
+    overview_url = base_url + 'crude-oil'
+    request_general_overview_data(session, overview_url)
+
 
 session = requests.Session()
 session.headers.update({'User-Agent': 'commodity-futures-bot/1.0'})
