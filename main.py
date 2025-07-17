@@ -1,60 +1,24 @@
-from bs4 import BeautifulSoup as btfs
+import pickle
 import requests
 import pandas as pd
-from datetime import date
-from datetime import datetime, timezone
+from bs4 import BeautifulSoup as btfs
+from datetime import date, datetime, timezone
+from pathlib import Path
 
-def request_general_overview_data(session, url):
+def save_df(df, filename, commodity):
+    commodity_path = Path.cwd() / commodity
+    commodity_path.mkdir(exist_ok=True)
+    df_path = commodity_path / filename
+    if df_path.exists():
+        loaded_df = pd.read_pickle(df_path)
+        concatenated_df = pd.concat([df, loaded_df])
+        if concatenated_df.shape[0] > 30:
+            concatenated_df = concatenated_df[:30] 
+        concatenated_df.to_pickle(df_path)
+    else:
+        df.to_pickle(df_path)
 
-    ### General Overview
-    # https://www.investing.com/commodities/crude-oil
-    response = session.get(url)
-    response.raise_for_status() 
-    soup = btfs(response.text, 'html.parser')
-
-    header_details = soup.find('div', attrs={'data-test': 'instrument-header-details'})
-
-    price_last = header_details.find('div', attrs={'data-test': 'instrument-price-last'}).string
-    print("price_last: ", price_last)
-    price_change = ''
-    for string in header_details.find('span', attrs={'data-test': 'instrument-price-change'}).strings:
-        if string != '+':
-            price_change = string
-    print("price_change: ", price_change)
-    price_change_percent = ''
-    
-    for string in header_details.find('div', attrs={'data-test': 'instrument-price-change-percentage'}).strings:
-        if string != '(' or string != '%)':
-            price_change_percent = string
-            break
-
-    print("price_change_percent: ", price_change_percent)
-
-    time_label = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-    print("time_label: ", time_label)
-
-    extracted_data = {}
-
-    dl_tag = soup.find('dl')
-
-    if dl_tag:
-
-        for div in dl_tag.find_all('div', recursive=False):
-            dt_tag = div.find('dt')
-            dd_tag = div.find('dd')
-
-            if dd_tag and 'data-test' in dd_tag.attrs:
-                data_test_attribute = dd_tag['data-test']
-                extracted_data[data_test_attribute] = dd_tag.text.strip()
-            elif dt_tag and 'data-test' in dt_tag.attrs:
-                data_test_attribute = dt_tag['data-test']
-                extracted_data[data_test_attribute] = dt_tag.text.strip()
-
-    # Print the extracted data to verify
-    for key, value in extracted_data.items():
-        print(f"{key}: {value}")
-
-def request_historical_data(session, url):
+def scrape_historical_data(session, url, dataset_exists=False):
     try:
         response = session.get(url)
         response.raise_for_status() 
@@ -62,61 +26,106 @@ def request_historical_data(session, url):
 
         table = soup.find('table', class_='freeze-column-w-1')
 
-        cols = []
+        column_names = []
         for th in table.thead.tr.find_all('th'):
             if th.div.button.span.string != 'Date':
-                cols.append(th.div.button.span.string)
+                column_names.append(str(th.div.button.span.string))
 
         tbody = table.tbody
 
-        rows = []
-        indices = []
+        historical_records = []
+        timestamps = []
         for tr in tbody.find_all('tr'):
-            row = []
+            historical_record = []
             for td in tr.find_all('td'):
                 if td.time:
-                    indices.append(td.time['datetime'])
+                    timestamps.append(str(td.time['datetime']))
                     continue
-                row.append(td.string)
-            rows.append(row)
-            
-        stats_summary = {}
+                elif td.string[-1] != 'K' and td.string[-1] != '%':
+                    historical_record.append(float(td.string))
+                    continue
+                else:
+                    historical_record.append(str(td.string))
+            # If historical data has been previously stored, only look for the most recent data and stop the search early
+            historical_records.append(historical_record)
+            if len(historical_records) == 1 and dataset_exists == True:
+                df = pd.DataFrame(historical_records, columns=column_names, index=timestamps)
+                return df
 
-        stats_grid = soup.find('div', class_=['md:after:content-none'])
-
-        for stat in stats_grid.find_all('div'):
-            if stat.div:
-                name = ''
-                for string in stat.div.strings:
-                    name = string
-                    break
-                value = stat.div.next_sibling.string
-
-                stats_summary[name] = value
-        
-        df = pd.DataFrame(rows, columns=cols, index=indices)
-        df.attrs = stats_summary
+        df = pd.DataFrame(historical_records, columns=column_names, index=timestamps)
         return df
     except requests.exceptions.HTTPError as e:
         print(f"HTTP Error: {e}")
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {e}")
 
-def get_commodity_history(session):
-    # commodities = ['crude-oil', 'natural-gas', 'copper', 'gold']
-    commodities = ['crude-oil']
+def get_commodity_history(session, base_url, commodities):
+    for commodity in commodities:
+        history_url = base_url + commodity + '-historical-data'
+        history_filename = f'{commodity}-historical.pkl'
+        df_path = Path.cwd() / commodity / history_filename
+        if df_path.exists():
+            df = scrape_historical_data(session, history_url, dataset_exists=True)
+        else:
+            df = scrape_historical_data(session, history_url)
+            save_df(df, history_filename, commodity)
+
+def scrape_overview_data(session, url):
+    try:
+        current_time = datetime.now(timezone.utc)
+        time_day = current_time.day
+        time_hour = current_time.hour
+        time_minute = current_time.minute
+
+        response = session.get(url)
+        response.raise_for_status() 
+        soup = btfs(response.text, 'html.parser')
+
+        header_details = soup.find('div', attrs={'data-test': 'instrument-header-details'})
+
+        header_data = []
+        price_last = header_details.find('div', attrs={'data-test': 'instrument-price-last'}).string
+        header_data.append(float(price_last))
+        price_change = header_details.find('span', attrs={'data-test': 'instrument-price-change'}).text
+        header_data.append(float(price_change))
+        price_change_percent = ''
+        for string in header_details.find('span', attrs={'data-test': 'instrument-price-change-percent'}).strings:
+            if string == '(' or string == '%)':
+                continue
+            price_change_percent += string
+        price_change_percent += '%'
+        header_data.append(str(price_change_percent))
+
+        dl_info = [time_day, time_hour, time_minute] + header_data
+        dl_tag = soup.find('dl')
+
+        if dl_tag:
+            for div in dl_tag.find_all('div', recursive=False):
+                dd_tag = div.find('dd')
+                if dd_tag and 'data-test' in dd_tag.attrs:
+                    dl_info.append(str(dd_tag.text.strip()))
+
+        columns = ['Day', 'Hour', 'Minute', 'Last Price', 'Price Change', 'Price Change Percent', 'Prev. Close', 'Open', 'Day Range', '52 Week Range', 'Volume', '1-Year Change', 'Month', 'Contract Size']
+        df = pd.DataFrame(data=[dl_info], columns=columns)
+        return df
+    except requests.exceptions.HTTPError as e:
+        print(f"HTTP Error: {e}")
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+
+def get_commodity_overview(session, base_url, commodities):
+    for commodity in commodities:
+        overview_url = base_url + commodity
+        overview_filename = f'{commodity}-overview.pkl'
+        df = scrape_overview_data(session, overview_url)
+        save_df(df, overview_filename, commodity)
+
+if __name__ == "__main__":
+    session = requests.Session()
+    session.headers.update({'User-Agent': 'commodity-futures-bot/1.0'})
+
+    commodities = ['natural-gas', 'copper', 'crude-oil', 'gold']
     base_url = 'https://www.investing.com/commodities/'
-    # for commodity in commodities:
-    #     history_url = base_url + commodity + '-historical-data'
-    #     df = request_historical_data(session, history_url)
-    #     filename = f'{commodity}-historical-{date.today()}.pkl'
-    #     df.to_pickle(filename)
-
-    overview_url = base_url + 'crude-oil'
-    request_general_overview_data(session, overview_url)
-
-
-session = requests.Session()
-session.headers.update({'User-Agent': 'commodity-futures-bot/1.0'})
-
-get_commodity_history(session)
+    
+    get_commodity_history(session, base_url, commodities)
+    get_commodity_overview(session, base_url, commodities)
