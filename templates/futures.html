@@ -1,0 +1,46 @@
+<html>
+	<head>
+		<title>Item Details</title>
+		<link href="{{ url_for('static', path='/styles.css') }}" rel="stylesheet">
+	</head>
+	<body>
+		<h2>Futures: {{ commodity }}</h2>
+		<ul>
+			<li><a href="{{ url_for('get_commodity_data', commodity='copper') }}">Copper</a></li>
+			<li><a href="{{ url_for('get_commodity_data', commodity='crude-oil') }}">Crude Oil</a></li>
+			<li><a href="{{ url_for('get_commodity_data', commodity='gold') }}">Gold</a></li>
+			<li><a href="{{ url_for('get_commodity_data', commodity='natural-gas') }}">Natural Gas</a></li>
+		</ul>
+		<h2>Overview</h2>
+		{% for record in overview %}
+			{% for value in record %}
+				<div>
+					<span>{{ value }}</span>
+					<span>{{ record[value] }}</span>
+				</div>
+			{% endfor %}
+		{% endfor %}
+		<table>
+			<thead>
+				<tr>
+					{% for header in history_columns %}
+						<th>{{ header }}</th>
+					{% endfor %}
+				</tr>
+			</thead>
+			<tbody>
+				{% for row in history %}
+					<tr>
+						{% for cell_data in row %}
+							<td>{{ cell_data }}</td>
+						{% endfor %}
+					</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+		<div>{{ history_stats.highest }}</div>
+		<div>{{ history_stats.lowest }}</div>
+		<div>{{ history_stats.difference }}</div>
+		<div>{{ history_stats.average }}</div>
+	</body>
+</html>

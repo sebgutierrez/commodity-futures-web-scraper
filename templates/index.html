@@ -1,0 +1,14 @@
+<html>
+	<head>
+		<title>Item Details</title>
+		<link href="{{ url_for('static', path='/styles.css') }}" rel="stylesheet">
+	</head>
+	<body>
+		<ul>
+			<li><a href="{{ url_for('get_commodity_data', commodity='copper') }}">Copper</a></li>
+			<li><a href="{{ url_for('get_commodity_data', commodity='crude-oil') }}">Crude Oil</a></li>
+			<li><a href="{{ url_for('get_commodity_data', commodity='gold') }}">Gold</a></li>
+			<li><a href="{{ url_for('get_commodity_data', commodity='natural-gas') }}">Natural Gas</a></li>
+		</ul>
+	</body>
+</html>
