@@ -12,7 +12,16 @@
 			<li><a href="{{ url_for('get_commodity_data', commodity='natural-gas') }}">Natural Gas</a></li>
 		</ul>
 		<h2>Overview</h2>
-		{% for record in overview %}
+		{% for record in daily_overview %}
+			{% for value in record %}
+				<div>
+					<span>{{ value }}</span>
+					<span>{{ record[value] }}</span>
+				</div>
+			{% endfor %}
+		{% endfor %}
+		<div>DIV</div>
+		{% for record in hourly_overview %}
 			{% for value in record %}
 				<div>
 					<span>{{ value }}</span>
@@ -23,13 +32,13 @@
 		<table>
 			<thead>
 				<tr>
-					{% for header in history_columns %}
+					{% for header in daily_history_columns %}
 						<th>{{ header }}</th>
 					{% endfor %}
 				</tr>
 			</thead>
 			<tbody>
-				{% for row in history %}
+				{% for row in daily_history %}
 					<tr>
 						{% for cell_data in row %}
 							<td>{{ cell_data }}</td>
@@ -38,9 +47,9 @@
 				{% endfor %}
 			</tbody>
 		</table>
-		<div>{{ history_stats.highest }}</div>
-		<div>{{ history_stats.lowest }}</div>
-		<div>{{ history_stats.difference }}</div>
-		<div>{{ history_stats.average }}</div>
+		<div>{{ daily_history_stats.highest }}</div>
+		<div>{{ daily_history_stats.lowest }}</div>
+		<div>{{ daily_history_stats.difference }}</div>
+		<div>{{ daily_history_stats.average }}</div>
 	</body>
 </html>

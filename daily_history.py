@@ -12,7 +12,7 @@ def strip_commas(string):
 			stripped += char
 	return stripped
 
-def save_df(df, filename, commodity):
+def save_history_df(df, filename, commodity):
     commodity_path = Path.cwd() / commodity
     commodity_path.mkdir(exist_ok=True)
     df_path = commodity_path / filename
@@ -53,7 +53,7 @@ def scrape_historical_data(session, url, dataset_exists=False):
 					continue
 				else:
 					historical_record.append(str(td.string))
-			# If historical data has been previously stored, only look for the most recent data and stop the search early
+			# If historical data has been previously stored, only look for the latest day's data and stop the search early
 			historical_records.append(historical_record)
 			if len(historical_records) == 1 and dataset_exists == True:
 				df = pd.DataFrame(historical_records, columns=column_names)
@@ -66,15 +66,16 @@ def scrape_historical_data(session, url, dataset_exists=False):
 		print(f"An error occurred: {e}")
 
 def get_commodity_history(session, base_url, commodities):
-    for commodity in commodities:
-        history_url = base_url + commodity + '-historical-data'
-        history_filename = f'{commodity}-historical.pkl'
-        df_path = Path.cwd() / commodity / history_filename
-        if df_path.exists():
-            df = scrape_historical_data(session, history_url, dataset_exists=True)
-        else:
-            df = scrape_historical_data(session, history_url)
-            save_df(df, history_filename, commodity)
+	for commodity in commodities:
+		history_url = base_url + commodity + '-historical-data'
+		history_filename = f'{commodity}-daily-history.pkl'
+		history_df_path = Path.cwd() / commodity / history_filename
+		history_df = None
+		if history_df_path.exists():
+			history_df = scrape_historical_data(session, history_url, dataset_exists=True)
+		else:
+			history_df = scrape_historical_data(session, history_url)
+		save_history_df(history_df, history_filename, commodity)
 
 if __name__ == "__main__":
     session = requests.Session()
