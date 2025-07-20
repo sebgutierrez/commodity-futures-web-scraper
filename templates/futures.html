@@ -51,5 +51,44 @@
 		<div>{{ daily_history_stats.lowest }}</div>
 		<div>{{ daily_history_stats.difference }}</div>
 		<div>{{ daily_history_stats.average }}</div>
+		<div>
+			<canvas id="myChart"></canvas>
+		</div>
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+		<script>
+			const ctx = document.getElementById('myChart');
+			// "{{ daily_overview }}"
+			let history_vals = '{{ hourly_overview | tojson }}'
+			console.log(history_vals)
+			new Chart(ctx, {
+				type: 'line',
+				data: {
+					labels: ['Blue'],
+					datasets: [
+						{
+							label: "{{ commodity }}",
+							data: [1],
+							borderWidth: 2,
+							fill: true
+						}
+					]
+				},
+				options: {
+					plugins: {
+						filler: {
+							propagate: false,
+						},
+						title: {
+							display: true,
+							text: (ctx) => 'Fill: ' + ctx.chart.data.datasets[0].fill
+						}
+					},
+					interaction: {
+						intersect: false,
+					}
+				},
+			});
+		</script>
 	</body>
 </html>

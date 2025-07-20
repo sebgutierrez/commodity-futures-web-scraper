@@ -36,34 +36,50 @@ async def root(request: Request):
 async def get_commodity_data(request: Request, commodity: str):
     daily_history_df, daily_overview_df, hourly_overview_df = load_commodity_data(commodity)
 
-    daily_hist_highest = daily_history_df["High"].max()
-    daily_hist_lowest = daily_history_df["Low"].min()
-    daily_hist_difference = daily_hist_highest - daily_hist_lowest
-    daily_hist_average = daily_history_df["Price"].mean()
+    daily_history_columns = list(daily_history_df.columns.values)
+    daily_history_highest = round(float(daily_history_df["High"].max()), 4)
+    daily_history_lowest = round(float(daily_history_df["Low"].min()), 4)
+    daily_history_difference = round(float(daily_history_highest - daily_history_lowest), 4)
+    daily_history_average = round(float(daily_history_df["Price"].mean()), 4)
 
     daily_history_json = daily_history_df.to_json(orient='values', indent=4)
-    formatted_daily_history_json = json.loads(daily_history_json)
+    formatted_daily_history_data = json.loads(daily_history_json)
 
+    daily_overview_columns = list(daily_overview_df.index.values)
     daily_overview_json = daily_overview_df.to_json(orient='values', indent=4)
-    formatted_daily_overview_json = json.loads(daily_overview_json)
+    formatted_daily_overview_data = json.loads(daily_overview_json)
 
-    hourly_overview_json = hourly_overview_df.to_json(orient='values', date_unit='s', indent=4)
-    formatted_hourly_overview_json = json.loads(hourly_overview_json)
-    
-    response_data =  {
+    hourly_overview_columns = list(hourly_overview_df['DateTime'].values)
+    hourly_overview_data = list(hourly_overview_df['Last Price'].values)
+    hourly_overview_date_time = hourly_overview_df['DateTime'].values[0]
+    hourly_overview_last_price = float(hourly_overview_df['Last Price'].values[0])
+    hourly_overview_price_change = round(float(hourly_overview_df['Price Change'].values[0]), 2)
+    hourly_overview_price_change_percent = hourly_overview_df['Price Change Percent'].values[0]
+
+    response_data = {
         "commodity": commodity,
-        "daily_history_columns": daily_history_df.columns,
-        "daily_history_stats": {
-            "highest": daily_hist_highest,
-            "lowest": daily_hist_lowest,
-            "difference": daily_hist_difference,
-            "average": daily_hist_average
+        "daily_history": {
+            "columns": daily_history_columns,
+            "data": formatted_daily_history_data,
+            "highest": daily_history_highest,
+            "lowest": daily_history_lowest,
+            "difference": daily_history_difference,
+            "average": daily_history_average
         },
-        "daily_history": formatted_daily_history_json,
-        "hourly_overview": formatted_hourly_overview_json,
-        "daily_overview": formatted_daily_overview_json
+        "hourly_overview_chart": {
+            "columns": hourly_overview_columns,
+            "data": hourly_overview_data
+        },
+        "hourly_overview": {
+            "date_time": hourly_overview_date_time,
+            "last_price": hourly_overview_last_price,
+            "price_change": hourly_overview_price_change,
+            "price_change_percent": hourly_overview_price_change_percent
+        },
+        "daily_overview": {
+            "columns": daily_overview_columns,
+            "data": formatted_daily_overview_data,
+        }
     }
 
-    return templates.TemplateResponse(
-        request=request, name="futures.html", context=response_data
-    )
+    return templates.TemplateResponse(request=request, name="futures.html", context=response_data)
