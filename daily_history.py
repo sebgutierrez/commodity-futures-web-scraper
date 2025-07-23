@@ -37,6 +37,8 @@ def scrape_historical_data(session, url, dataset_exists=False):
 		for th in table.thead.tr.find_all('th'):
 			column_names.append(str(th.div.button.span.string))
 
+		column_names.append('polarity')
+
 		tbody = table.tbody
 
 		historical_records = []
@@ -45,12 +47,18 @@ def scrape_historical_data(session, url, dataset_exists=False):
 			for td in tr.find_all('td'):
 				if td.time:
 					historical_record.append(str(td.time['datetime']))
+				if td.string is None:
+					print(td)
 					continue
 				elif td.string[-1] != 'K' and td.string[-1] != '%':
 					if td.string.find(',') != -1:
 						td.string = strip_commas(td.string)
 					historical_record.append(float(td.string))
-					continue
+				elif td.string[-1] == '%':
+					if td.string[0] == '+':
+						historical_record.append('positive')
+					else:
+						historical_record.append('negative')
 				else:
 					historical_record.append(str(td.string))
 			# If historical data has been previously stored, only look for the latest day's data and stop the search early

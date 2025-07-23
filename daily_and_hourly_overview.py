@@ -43,14 +43,16 @@ def scrape_overview_data(session, url, has_been_a_day):
 	try:
 		chicago_tz = pytz.timezone('America/Chicago')
 		current_time_chicago = datetime.now(pytz.utc).astimezone(chicago_tz)
+		formatted_isoformat = current_time_chicago.isoformat()
 		formatted_datetime = current_time_chicago.strftime("%m/%d/%Y %I:%H %p")
-		formatted_date = current_time_chicago.strftime("%m/%d/%Y")
 
 		response = session.get(url)
 		response.raise_for_status() 
 		soup = btfs(response.text, 'html.parser')
 
 		header_data = []
+		commodity_name = soup.find('div', class_={'flex flex-col gap-6 md:gap-0'}).div.div.div.h1.text.strip()
+		header_data.append(str(commodity_name))
 		header_details = soup.find('div', attrs={'data-test': 'instrument-header-details'})
 		price_last = header_details.find('div', attrs={'data-test': 'instrument-price-last'}).text.strip()
 		header_data.append(str(price_last))
@@ -66,8 +68,8 @@ def scrape_overview_data(session, url, has_been_a_day):
 
 		daily_series = None
 		if has_been_a_day:
-			daily_series_data = [formatted_date]
-			daily_series_indices = ['Date', 'Prev. Close', 'Open', 'Day Range', '52 Week Range', 'Volume', '1-Year Change', 'Month', 'Contract Size']
+			daily_series_data = [formatted_datetime]
+			daily_series_indices = ['Date Time', 'Prev. Close', 'Open', 'Day Range', '52 Week Range', 'Volume', '1-Year Change', 'Month', 'Contract Size']
 			dl_tag = soup.find('dl')
 			if dl_tag:
 				for div in dl_tag.find_all('div', recursive=False):
@@ -76,8 +78,8 @@ def scrape_overview_data(session, url, has_been_a_day):
 						daily_series_data.append(str(dd_tag.text.strip()))
 			daily_series = pd.DataFrame(data=daily_series_data, index=daily_series_indices)
 
-		hourly_df_record = [formatted_datetime] + header_data
-		hourly_df_columns = ['DateTime', 'Last Price', 'Price Change', 'Price Change Percent']
+		hourly_df_record = [formatted_isoformat] + header_data
+		hourly_df_columns = ['Date Time', 'Commodity Name', 'Last Price', 'Price Change', 'Price Change Percent']
 		hourly_df = pd.DataFrame(data=[hourly_df_record], columns=hourly_df_columns)
 		return daily_series, hourly_df
 	except requests.exceptions.HTTPError as e:

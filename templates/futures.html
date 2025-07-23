@@ -2,92 +2,137 @@
 	<head>
 		<title>Item Details</title>
 		<link href="{{ url_for('static', path='/styles.css') }}" rel="stylesheet">
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/date-fns@4.1.0/cdn.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 	</head>
 	<body>
-		<h2>Futures: {{ commodity }}</h2>
-		<ul>
-			<li><a href="{{ url_for('get_commodity_data', commodity='copper') }}">Copper</a></li>
-			<li><a href="{{ url_for('get_commodity_data', commodity='crude-oil') }}">Crude Oil</a></li>
-			<li><a href="{{ url_for('get_commodity_data', commodity='gold') }}">Gold</a></li>
-			<li><a href="{{ url_for('get_commodity_data', commodity='natural-gas') }}">Natural Gas</a></li>
+		<ul class="w-full flex justify-center py-2 gap-x-4 px-8 bg-blue-200">
+			<li class="w-full border-2 border-black rounded-lg">
+				<a class="" href="{{ url_for('get_commodity_data', commodity='copper') }}">Copper</a>
+			</li>
+			<li class="w-full border-2 border-black rounded-lg">
+				<a class="" href="{{ url_for('get_commodity_data', commodity='crude-oil') }}">Crude Oil</a>
+			</li>
+			<li class="w-full border-2 border-black rounded-lg">
+				<a class="" href="{{ url_for('get_commodity_data', commodity='gold') }}">Gold</a>
+			</li>
+			<li class="w-full border-2 border-black rounded-lg">
+				<a class="" href="{{ url_for('get_commodity_data', commodity='natural-gas') }}">Natural Gas</a>
+			</li>
 		</ul>
-		<h2>Overview</h2>
-		{% for record in daily_overview %}
-			{% for value in record %}
-				<div>
-					<span>{{ value }}</span>
-					<span>{{ record[value] }}</span>
+		<div class="py-2">
+			<h2 class="">{{ hourly_overview.commodity_name }}</h2>
+			<div class="flex gap-x-1">
+				<span class="text-2xl">{{ hourly_overview.last_price }}</span>
+				<div class="flex gap-x-1">
+					<div>{{ hourly_overview.price_change }}</div>
+					<div>({{ hourly_overview.price_change_percent }})</div>
 				</div>
-			{% endfor %}
-		{% endfor %}
-		<div>DIV</div>
-		{% for record in hourly_overview %}
-			{% for value in record %}
-				<div>
-					<span>{{ value }}</span>
-					<span>{{ record[value] }}</span>
-				</div>
-			{% endfor %}
-		{% endfor %}
-		<table>
-			<thead>
-				<tr>
-					{% for header in daily_history_columns %}
-						<th>{{ header }}</th>
+			</div>
+			<div>Last Updated (15-minute delay): {{ hourly_overview.date_time | datetime }}</div>
+		</div>
+		<table class="py-2 border-2 border-slate-200">
+			<thead class="border-b-2 border-black">
+				<tr class="">
+					{% for column_name in daily_history.columns %}
+						<th class="text-left">{{ column_name }}</th>
 					{% endfor %}
 				</tr>
 			</thead>
-			<tbody>
-				{% for row in daily_history %}
-					<tr>
+			<tbody class="">
+				{% for row in daily_history.data %}
+					<tr class="{{ loop.cycle('', 'bg-blue-200')}}">
 						{% for cell_data in row %}
-							<td>{{ cell_data }}</td>
+							{% if loop.index == 1 %}
+								<td class="py-1 pr-3">{{ cell_data }}</td>
+							{% elif loop.index == 2 or loop.index == 7 and row["polarity"] == "positive" %}
+								{% row["polarity"] == "positive" %}
+									<td class="py-1 px-3 text-green-400">{{ cell_data }}</td>
+								{% else %}
+									<td class="py-1 px-3 text-red-400">{{ cell_data }}</td>
+								{% endif %}
+							{% else %}
+								<td class="py-1 px-3">{{ cell_data }}</td>
+							{% endif %}
 						{% endfor %}
 					</tr>
 				{% endfor %}
 			</tbody>
 		</table>
-		<div>{{ daily_history_stats.highest }}</div>
-		<div>{{ daily_history_stats.lowest }}</div>
-		<div>{{ daily_history_stats.difference }}</div>
-		<div>{{ daily_history_stats.average }}</div>
+		<div>{{ daily_history.highest }}</div>
+		<div>{{ daily_history.lowest }}</div>
+		<div>{{ daily_history.difference }}</div>
+		<div>{{ daily_history.average }}</div>
 		<div>
 			<canvas id="myChart"></canvas>
 		</div>
-		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+		<h2>Overview</h2>
+		{% for key in daily_overview %}
+			<div class="py-2">
+				<span>{{ key }}</span>
+				<span>{{ daily_overview[key]["0"] }}</span>
+			</div>
+		{% endfor %}
 		<script>
 			const ctx = document.getElementById('myChart');
-			// "{{ daily_overview }}"
-			let history_vals = '{{ hourly_overview | tojson }}'
-			console.log(history_vals)
+			const hourlyOverviewTimeStamps = JSON.parse('{{ hourly_overview_chart.columns | tojson }}')
+			const hourlyOverviewData = JSON.parse('{{ hourly_overview_chart.data | tojson }}')
+			let chartData = []
+			for (let i = 0; i < hourlyOverviewTimeStamps.length; i++){
+				chartData.push({
+					x: hourlyOverviewTimeStamps[i],
+					y: hourlyOverviewData[i]
+				})
+			}
 			new Chart(ctx, {
 				type: 'line',
 				data: {
-					labels: ['Blue'],
 					datasets: [
 						{
 							label: "{{ commodity }}",
-							data: [1],
+							data: chartData,
 							borderWidth: 2,
+							tension: 0.1,
 							fill: true
 						}
 					]
 				},
 				options: {
-					plugins: {
-						filler: {
-							propagate: false,
+					responsive: true,
+					maintainAspectRatio: false,
+					scales: {
+						x: {
+							type: 'time',
+							ticks: {
+								source: 'data'
+							},
+							time: {
+								unit: 'minute', 
+								stepSize: 15,
+								displayFormats: {
+									hour: 'h:mm a',
+									day: 'MMM d'
+								},
+                				tooltipFormat: 'MMM d, yyyy h:mm a' // Full format for tooltips
+							},
+							title: {
+								display: true,
+								text: 'Date and Time'
+							},
 						},
-						title: {
-							display: true,
-							text: (ctx) => 'Fill: ' + ctx.chart.data.datasets[0].fill
+						y: {
+							beginAtZero: false,
 						}
 					},
-					interaction: {
-						intersect: false,
+					plugins: {
+						tooltip: {
+							// Ensure tooltips are aligned correctly for time series
+							mode: 'index',
+							intersect: false
+						}
 					}
-				},
+				}
 			});
 		</script>
 	</body>
