@@ -61,7 +61,11 @@ def load_commodity_data(commodity: str):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse(request=request, name="index.html", context={"request": request})
+    return templates.TemplateResponse(request=request, name="layout.html", context={"request": request})
+
+@app.get("/about", response_class=HTMLResponse)
+async def about(request: Request):
+    return templates.TemplateResponse(request=request, name="about.html", context={"request": request})
 
 @app.get("/futures/{commodity}", response_class=HTMLResponse)
 async def get_commodity_data(request: Request, commodity: str):
