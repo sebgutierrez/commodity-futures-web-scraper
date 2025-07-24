@@ -12,13 +12,14 @@ def has_been_a_day():
 	daily_series_path = commodity_path / 'copper-daily-overview.pkl'
 	if daily_series_path.exists():
 		loaded_series = pd.read_pickle(daily_series_path)
-		last_recorded_date = datetime.strptime(loaded_series[0]['Date'], "%m/%d/%Y").date()
+		last_recorded_date = datetime.strptime(loaded_series[0]['Date Time'], "%m/%d/%Y %I:%M %p").date()
 		todays_date = datetime.today().date()
 		if todays_date > last_recorded_date:
-			return True
+			return True 
 		else:
 			return False
-	return True # To not prevent creating of file
+	# To not prevent creating of file
+	return True
 
 def save_data(daily_series, hourly_df, commodity, has_been_a_day):
 	commodity_path = Path.cwd() / commodity
@@ -37,7 +38,6 @@ def save_data(daily_series, hourly_df, commodity, has_been_a_day):
 	if daily_series is not None and has_been_a_day:
 		daily_series_path = commodity_path / f'{commodity}-daily-overview.pkl'
 		daily_series.to_pickle(daily_series_path)
-
 
 def scrape_overview_data(session, url, has_been_a_day):
 	try:
@@ -69,14 +69,25 @@ def scrape_overview_data(session, url, has_been_a_day):
 		daily_series = None
 		if has_been_a_day:
 			daily_series_data = [formatted_datetime]
-			daily_series_indices = ['Date Time', 'Prev. Close', 'Open', 'Day Range', '52 Week Range', 'Volume', '1-Year Change', 'Month', 'Contract Size']
-			dl_tag = soup.find('dl')
+			daily_series_indices = ['Date Time', 'Prev. Close', 'Open', 'Day Range', '52 Week Range', 'Volume', '1-Year Change', 'Month', 'Contract Size', 'Settlement Day', 'Tick Value', 'Point Value', 'Last Rollover Day']
+			dl_tag = soup.find('dl', class_={'sm:mr-8'})
 			if dl_tag:
 				for div in dl_tag.find_all('div', recursive=False):
 					dd_tag = div.find('dd')
 					if dd_tag and 'data-test' in dd_tag.attrs:
 						daily_series_data.append(str(dd_tag.text.strip()))
+			second_dl_tag = soup.find('dl', class_={'sm:block'})
+			if second_dl_tag:
+				settlement_day = soup.find('dd', attrs={'data-test': 'settlement_date'}).text.strip()
+				daily_series_data.append(settlement_day)
+				tick_value = soup.find('dd', attrs={'data-test': 'tick_value'}).text.strip()
+				daily_series_data.append(tick_value)
+				point_value = soup.find('dd', attrs={'data-test': 'point_value'}).text.strip()
+				daily_series_data.append(point_value)
+				rollover_day = soup.find('dd', attrs={'data-test': 'rollover_day'}).text.strip()
+				daily_series_data.append(rollover_day)
 			daily_series = pd.DataFrame(data=daily_series_data, index=daily_series_indices)
+
 
 		hourly_df_record = [formatted_isoformat] + header_data
 		hourly_df_columns = ['Date Time', 'Commodity Name', 'Last Price', 'Price Change', 'Price Change Percent']

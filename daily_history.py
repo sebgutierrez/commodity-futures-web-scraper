@@ -5,6 +5,13 @@ import pickle
 import pytz
 import requests
 
+def hundredth_precision(float_str):
+    split = float_str.split('.')
+    if len(split[1]) > 1:
+        hundredths = split[0] + '.' + split[1][:2] 
+        return hundredths
+    return float_str
+
 def strip_commas(string):
 	stripped = ''
 	for char in string:
@@ -44,23 +51,23 @@ def scrape_historical_data(session, url, dataset_exists=False):
 		historical_records = []
 		for tr in tbody.find_all('tr'):
 			historical_record = []
+			polarity = ""
 			for td in tr.find_all('td'):
 				if td.time:
 					historical_record.append(str(td.time['datetime']))
-				if td.string is None:
-					print(td)
-					continue
 				elif td.string[-1] != 'K' and td.string[-1] != '%':
 					if td.string.find(',') != -1:
 						td.string = strip_commas(td.string)
-					historical_record.append(float(td.string))
+					historical_record.append(float(hundredth_precision(td.string)))
 				elif td.string[-1] == '%':
 					if td.string[0] == '+':
-						historical_record.append('positive')
+						polarity = "+"
 					else:
-						historical_record.append('negative')
+						polarity = "-"
+					historical_record.append(str(td.string))
 				else:
 					historical_record.append(str(td.string))
+			historical_record.append(polarity)
 			# If historical data has been previously stored, only look for the latest day's data and stop the search early
 			historical_records.append(historical_record)
 			if len(historical_records) == 1 and dataset_exists == True:

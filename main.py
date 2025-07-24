@@ -10,15 +10,34 @@ import jinja2
 from jinja2.filters import FILTERS
 import json
 
-def datetime_formatting_filter(datetimestr):
-    format = '%b %d, %Y %H:%M %p'
-    datetime_obj = datetime.fromisoformat(datetimestr)
-    formatted_datetime = dt_object_no_tz = datetime.strftime(datetime_obj, format)
-    print(formatted_datetime)
-    return formatted_datetime 
+def datetime_formatting_filter(datetime_str, type="datetime"):
+    format = ""
+    if type == "datetime":
+        format = '%b %d, %Y %H:%M %p'
+        datetime_obj = datetime.fromisoformat(datetime_str)
+        formatted_datetime = datetime.strftime(datetime_obj, format)
+        return formatted_datetime
+    else:
+        original_format = "%m/%d/%Y %H:%M %p"
+        new_format = '%b %d, %Y'
+        datetime_object = datetime.strptime(datetime_str, original_format)
+        formatted_date_string = datetime_object.strftime(new_format)
+        return formatted_date_string
+
+def split_range_string(range):
+    values = range.split('-')
+    return f"{values[0]} - {values[1]}"
 
 FILTERS["datetime"] = datetime_formatting_filter
+FILTERS["split"] = split_range_string
 
+def hundredth_precision(float_str):
+    split = float_str.split('.')
+    if len(split[1]) > 1:
+        hundredths = split[0] + '.' + split[1][:2] 
+        return hundredths
+    return float_str
+    
 app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -49,10 +68,10 @@ async def get_commodity_data(request: Request, commodity: str):
     daily_history_df, daily_overview_series, hourly_overview_df = load_commodity_data(commodity)
 
     daily_history_columns = list(daily_history_df.columns.values)
-    daily_history_highest = round(float(daily_history_df["High"].max()), 4)
-    daily_history_lowest = round(float(daily_history_df["Low"].min()), 4)
-    daily_history_difference = round(float(daily_history_highest - daily_history_lowest), 4)
-    daily_history_average = round(float(daily_history_df["Price"].mean()), 4)
+    daily_history_highest = round(float(daily_history_df["High"].max()), 2)
+    daily_history_lowest = round(float(daily_history_df["Low"].min()), 2)
+    daily_history_difference = round(float(daily_history_highest - daily_history_lowest), 2)
+    daily_history_average = round(float(daily_history_df["Price"].mean()), 2)
 
     daily_history_json = daily_history_df.to_json(orient='values', indent=4)
     formatted_daily_history_data = json.loads(daily_history_json)
@@ -63,16 +82,27 @@ async def get_commodity_data(request: Request, commodity: str):
     hourly_overview_timestamps = list(hourly_overview_df['Date Time'].values)
     hourly_overview_data = list(hourly_overview_df['Last Price'].values)
     hourly_overview_commodity_name = hourly_overview_df['Commodity Name'].values[0]
-    print(hourly_overview_commodity_name)
+
     hourly_overview_date_time = hourly_overview_df['Date Time'].values[0]
-    hourly_overview_last_price = hourly_overview_df['Last Price'].values[0]
-    hourly_overview_price_change = round(float(hourly_overview_df['Price Change'].values[0]), 2)
+    hourly_overview_last_price = hundredth_precision(hourly_overview_df['Last Price'].values[0])
+    hourly_overview_price_change = hundredth_precision(hourly_overview_df['Price Change'].values[0])
     hourly_overview_price_change_percent = hourly_overview_df['Price Change Percent'].values[0]
 
-    print(hourly_overview_timestamps)
-    print(hourly_overview_data)
+    previews = {}
+    for cm in ["copper", "crude-oil", "gold", "natural-gas"]:
+        if cm != commodity:
+            df = load_df(cm, "hourly-overview")
+            previews[cm] = {
+                "commodity_name": cm,
+                "commodity_full_name": df['Commodity Name'].values[0],
+                "last_price": hundredth_precision(df['Last Price'].values[0]),
+                "price_change_percent": df['Price Change Percent'].values[0]
+            }
+
+    # print(previews)
+
     response_data = {
-        "commodity": commodity,
+        "commodity": hourly_overview_commodity_name,
         "daily_history": {
             "columns": daily_history_columns,
             "data": formatted_daily_history_data,
@@ -82,11 +112,10 @@ async def get_commodity_data(request: Request, commodity: str):
             "average": daily_history_average
         },
         "hourly_overview_chart": {
-            # 2025-20-07T08:00:00
-            # "columns": ['07/20/2025 08:00 PM', '07/20/2025 08:15 PM', '07/20/2025 08:30 PM', '07/20/2025 08:45 PM'],
-            "columns": ['2025-07-20T08:00:00', '2025-07-20T08:15:00', '2025-07-20T08:30:00', '2025-07-20T08:45:00'],
-            "data": ['5.5902', '5.7000', '6.4000', '4.9000']
+            "columns": hourly_overview_timestamps,
+            "data": hourly_overview_data
         },
+        "previews": previews,
         "hourly_overview": {
             "date_time": hourly_overview_date_time,
             "commodity_name": hourly_overview_commodity_name,
@@ -96,9 +125,4 @@ async def get_commodity_data(request: Request, commodity: str):
         },
         "daily_overview": formatted_daily_overview_dict
     }
-
-        # "hourly_overview_chart": {
-        #     "hourly_overview_timestamps": hourly_overview_columns,
-        #     "data": hourly_overview_data
-        # },
     return templates.TemplateResponse(request=request, name="futures.html", context=response_data)
