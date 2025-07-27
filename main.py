@@ -46,11 +46,15 @@ app.add_middleware(GZipMiddleware)
 templates = Jinja2Templates(directory="templates")
 
 def load_df(commodity: str, type: str):
+    commodities_path = Path.cwd() / 'commodities'
+    commodities_path.mkdir(exist_ok=True)
+    commodity_path = commodities_path / commodity
+    commodity_path.mkdir(exist_ok=True)
     df = None
     filename = f'{commodity}-{type}.pkl'
-    path = Path.cwd() / commodity / filename
-    if path.exists():
-        df = pd.read_pickle(path)
+    df_path = commodity_path / filename
+    if df_path.exists():
+        df = pd.read_pickle(df_path)
     return df
 
 def load_commodity_data(commodity: str):
@@ -103,8 +107,6 @@ async def get_commodity_data(request: Request, commodity: str):
                 "price_change_percent": df['Price Change Percent'].values[0]
             }
 
-    # print(previews)
-
     response_data = {
         "commodity": hourly_overview_commodity_name,
         "daily_history": {
@@ -129,4 +131,5 @@ async def get_commodity_data(request: Request, commodity: str):
         },
         "daily_overview": formatted_daily_overview_dict
     }
+
     return templates.TemplateResponse(request=request, name="futures.html", context=response_data)

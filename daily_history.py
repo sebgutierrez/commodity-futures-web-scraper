@@ -6,11 +6,11 @@ import pytz
 import requests
 
 def hundredth_precision(float_str):
-    split = float_str.split('.')
-    if len(split[1]) > 1:
-        hundredths = split[0] + '.' + split[1][:2] 
-        return hundredths
-    return float_str
+	split = float_str.split('.')
+	if len(split[1]) > 1:
+		hundredths = split[0] + '.' + split[1][:2] 
+		return hundredths
+	return float_str
 
 def strip_commas(string):
 	stripped = ''
@@ -20,17 +20,19 @@ def strip_commas(string):
 	return stripped
 
 def save_history_df(df, filename, commodity):
-    commodity_path = Path.cwd() / commodity
-    commodity_path.mkdir(exist_ok=True)
-    df_path = commodity_path / filename
-    if df_path.exists():
-        loaded_df = pd.read_pickle(df_path)
-        concatenated_df = pd.concat([df, loaded_df])
-        if concatenated_df.shape[0] > 30:
-            concatenated_df = concatenated_df[:30] 
-        concatenated_df.to_pickle(df_path)
-    else:
-        df.to_pickle(df_path)
+	commodities_path = Path.cwd() / 'commodities'
+	commodities_path.mkdir(exist_ok=True)
+	commodity_path = commodities_path / commodity
+	commodity_path.mkdir(exist_ok=True)
+	df_path = commodity_path / filename
+	if df_path.exists():
+		loaded_df = pd.read_pickle(df_path)
+		concatenated_df = pd.concat([df, loaded_df])
+		if concatenated_df.shape[0] > 30:
+			concatenated_df = concatenated_df[:30] 
+		concatenated_df.to_pickle(df_path)
+	else:
+		df.to_pickle(df_path)
 
 def scrape_historical_data(session, url, dataset_exists=False):
 	try:
@@ -83,8 +85,10 @@ def scrape_historical_data(session, url, dataset_exists=False):
 def get_commodity_history(session, base_url, commodities):
 	for commodity in commodities:
 		history_url = base_url + commodity + '-historical-data'
+		commodities_path = Path.cwd() / "commodities"
+		commodity_path = commodities_path / commodity
 		history_filename = f'{commodity}-daily-history.pkl'
-		history_df_path = Path.cwd() / commodity / history_filename
+		history_df_path = commodity_path / history_filename
 		history_df = None
 		if history_df_path.exists():
 			history_df = scrape_historical_data(session, history_url, dataset_exists=True)

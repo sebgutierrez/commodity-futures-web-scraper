@@ -1,112 +1,169 @@
 {% extends "layout.html" %}
 {% block content %}
-	<ul class="w-full flex flex-col md:flex-row justify-center py-2 gap-y-2 md:gap-y-0 md:gap-x-4 px-8">
-		{% for commodity in previews.values() %}
-			<li class="flex w-full justify-between items-center px-2 py-0.5 border-2 border-black rounded-lg">
-				<a class="text-lg leading-8" href="{{ url_for('get_commodity_data', commodity=commodity.commodity_name) }}">{{ commodity.commodity_full_name }}</a>
-				<div class="flex flex-row gap-x-1">
-					{% if commodity.price_change_percent[0] == "+" %}
-						<div class="text-right leading-5 text-green-400">+{{ commodity.last_price }}</div>
-						<div class="leading-5 text-green-400">({{ commodity.price_change_percent }})</div>
+	<div class="">
+		<ul class="relative w-full flex justify-center py-2 gap-x-2 gap-y-2 md:gap-y-0 md:gap-x-4 px-2 border-b-1 border-slate-200">
+			{% for commodity in previews.values() %}
+				<li class="flex flex-col md:flex-row w-fit gap-x-4 justify-between md:items-center px-2 py-1 md:py-0.5 border-1 border-slate-200 rounded-lg">
+					<a class="text-md sm:text-lg leading-5 sm:leading-8" href="{{ url_for('get_commodity_data', commodity=commodity.commodity_name) }}">{{ commodity.commodity_full_name }}</a>
+					<div class="flex flex-col md:flex-row gap-x-1">
+						{% if commodity.price_change_percent[0] == "+" %}	
+							<div class="flex flow-col-reverse gap-x-1 md:flex-row">				
+								<div class="text-right leading-5 text-green-400">+{{ commodity.last_price }}</div>
+								<div class="leading-5 text-green-400">({{ commodity.price_change_percent }})</div>
+							</div>	
+						{% else %}	
+							<div class="flex flow-col-reverse gap-x-1 md:flex-row">					
+								<div class="text-right leading-5 text-red-600">{{ commodity.last_price }}</div>
+								<div class="leading-5 text-red-600">({{ commodity.price_change_percent }})</div>
+							</div>	
+						{% endif %}
+					</div>
+				</li>
+			{% endfor %}
+		</ul>
+		<div class="pt-4 pb-4 border-b-1 border-slate-200">
+			<div class="flex justify-between mx-4">
+				<h2 class="text-lg">{{ hourly_overview.commodity_name }}&nbsp;({{ daily_overview["Month"]["0"] }})</h2>
+				<div>Currency in USD ($)</div>
+			</div>
+			<div class="flex flex-col gap-x-1 mx-4">
+				<span class="text-5xl">{{ hourly_overview.last_price }}</span>
+				<div class="flex gap-x-1">
+					{% if hourly_overview.price_change_percent[0] == "+" %}
+						<div class="text-green-400">{{ hourly_overview.price_change }}</div>
+						<div class="text-green-400">{{ hourly_overview.price_change_percent }}</div>
 					{% else %}
-						<div class="text-right leading-5 text-red-400">{{ commodity.last_price }}</div>
-						<div class="leading-5 text-red-400">({{ commodity.price_change_percent }})</div>
+						<div class="text-red-500">{{ hourly_overview.price_change }}</div>
+						<div class="text-red-500">({{ hourly_overview.price_change_percent }})</div>
 					{% endif %}
 				</div>
-			</li>
-		{% endfor %}
-	</ul>
-	<div class="py-2">
-		<div class="flex justify-between mx-4">
-			<h2 class="">{{ hourly_overview.commodity_name }}&nbsp;({{ daily_overview["Month"]["0"] }})</h2>
-			<div>Currency in USD ($)</div>
-		</div>
-		<div class="flex gap-x-1 mx-4">
-			<span class="text-2xl">{{ hourly_overview.last_price }}</span>
-			<div class="flex gap-x-1">
-				{% if hourly_overview.price_change_percent[0] == "+" %}
-					<div class="text-green-400">{{ hourly_overview.price_change }}</div>
-					<div class="text-green-400">{{ hourly_overview.price_change_percent }}</div>
-				{% else %}
-					<div class="text-red-400">{{ hourly_overview.price_change }}</div>
-					<div class="text-red-400">({{ hourly_overview.price_change_percent }})</div>
-				{% endif %}
 			</div>
+			<div class="mx-4">Last Updated (15-minute delay):&nbsp;{{ hourly_overview.date_time | datetime("datetime") }}</div>
 		</div>
-		<div class="mx-4">Last Updated (15-minute delay):&nbsp;{{ hourly_overview.date_time | datetime("datetime") }}</div>
 	</div>
-	<div>
-		<canvas id="myChart"></canvas>
-	</div>
-	<div>
-		<table class="py-2 mx-auto border-2 border-slate-200">
-			<thead class="border-b-2 border-black">
-				<tr class="">
-					{% for column_name in daily_history.columns %}
-						{% if loop.index != 8 %}
-							<th class="text-left">{{ column_name }}</th>
+	<div class="bg-[#f7fafc]">
+		<div class="flex justify-center flex-col pt-6">
+			<div class="relative px-4 mx-auto my-0 lg:my-4 w-full md:w-[90vw] h-[35vh] max-h-[275px]">
+				<canvas class="bg-white pl-2 pr-4 border-1 border-slate-200 rounded-lg" id="myChart"></canvas>
+			</div>
+			<div class="flex flex-col px-4 mx-auto w-full md:w-[90vw] mt-3 lg:mt-0 gap-y-4">
+				<h2 class="text-center">Daily Overview&nbsp;({{ daily_overview["Date Time"]["0"] | datetime("date") }})</h2>
+				<div class="bg-white grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-rows-8 sm:grid-rows-4 lg:grid-rows-3 gap-5 w-full md:gap-3 w-fit px-3 py-2 pb-4 mx-auto border-1 border-[#EFEFEF] rounded-lg ">
+					{% for key in daily_overview %}
+						{% if key != "Date Time" and key != "Month" %}
+							<div class="flex flex-row justify-between border-b-1 border-slate-800/30 border-dashed">
+								{% if key == "52 Week Range" or key == "Day Range" %}
+									<span class="text-[#616161]">{{ key }}</span>
+									<span class="font-semibold">{{ daily_overview[key]["0"] | split }}</span>
+								{% else %}
+									<span class="text-[#616161]">{{ key }}</span>
+									<span class="font-semibold">{{ daily_overview[key]["0"] }}</span>
+								{% endif %}
+							</div>
 						{% endif %}
 					{% endfor %}
-				</tr>
-			</thead>
-			<tbody class="">
-				{% for daily_info in daily_history.data %}
-					<tr class="{{ loop.cycle('', 'bg-blue-200')}}">
-						{% for quantity in daily_info %}
-							{% if loop.index == 1 %}
-								<td class="py-1 pr-3">{{ quantity }}</td>
-							{% elif loop.index == 2 or loop.index == 7 %}
-								{% if daily_info[-1] == "+" %}
-									<td class="py-1 px-3 text-green-400">{{ quantity }}</td>
-								{% else %}
-									<td class="py-1 px-3 text-red-400">{{ quantity }}</td>
+				</div>
+			</div>
+		</div>
+		<h2 class="text-center pt-4">Daily History</h2>
+		<div class="py-4">
+			<div class="border-1 md:border-0 border-slate-200 rounded-lg overflow-x-auto md:overflow-x-none min-w-[440px] md:min-w-0 mx-4 md:mx-0">
+				<table class="bg-white py-2 mx-auto">
+					<thead class="">
+						<tr class="border-1 border-slate-200 shadow-[0px_4px_2px_-2px_rgba(0,_0,_0,_0.1)] ">
+							{% for column_name in daily_history.columns %}
+								{% if loop.index != 8 %}
+									<th class="text-nowrap font-medium px-3 md:pl-3 md:pr-8 py-3 text-left border-1 border-slate-200">{{ column_name }}</th>
 								{% endif %}
-							{% elif loop.index == 8 %}
-								<div></div>
-							{% else %}
-								<td class="py-1 px-3">{{ quantity }}</td>
-							{% endif %}
+							{% endfor %}
+						</tr>
+					</thead>
+					<tbody class="bg-white">
+						{% for daily_info in daily_history.data %}
+							<tr class="text-nowrap jetbrains-mono-normal hover:bg-slate-200/40 {{ loop.cycle('', '')}}">
+								{% for quantity in daily_info %}
+									{% if loop.index == 1 %}
+										<td class="text-nowrap text-[#2D3748] text-[13px] py-1 pr-3 border-1 border-slate-200">&nbsp;{{ quantity }}</td>
+									{% elif loop.index == 2 or loop.index == 7 %}
+										{% if daily_info[-1] == "+" %}
+											<td class="text-[#2D3748] text-[13px] py-1 px-3 text-green-400 border-1 border-slate-200">{{ quantity }}</td>
+										{% else %}
+											<td class="text-[#2D3748] text-[13px] py-1 px-3 text-red-500 border-1 border-slate-200">{{ quantity }}</td>
+										{% endif %}
+									{% elif loop.index == 8 %}
+										<div></div>
+									{% else %}
+										<td class="text-[#2D3748] text-[13px] py-1 px-3 border-1 border-slate-200">{{ quantity }}</td>
+									{% endif %}
+								{% endfor %}
+							</tr>
 						{% endfor %}
-					</tr>
-				{% endfor %}
-			</tbody>
-		</table>
-		<div class="mb-3">
-			<div class="flex mx-auto w-fit py-2 px-2 justify-center gap-x-4">
-				<div>Highest:&nbsp;{{ daily_history.highest }}</div>
-				<div>Lowest:&nbsp;{{ daily_history.lowest }}</div>
-				<div>Difference:&nbsp;{{ daily_history.difference }}</div>
-				<div>Average:&nbsp;{{ daily_history.average }}</div>
+					</tbody>
+				</table>
+				<div class="bg-white grid justify-center grid-cols-2 lg:grid-cols-4 grid-rows-2 lg:grid-rows-1 gap-3 w-full px-3 py-2 my-3 mx-auto border-1 border-[#EFEFEF] rounded-lg">
+					<div class="flex flex-row justify-between border-b-1 border-slate-800/30 border-dashed">
+						<div>Highest</div>
+						<div>{{ daily_history.highest }}</div>
+					</div>
+					<div class="flex flex-row justify-between border-b-1 border-slate-800/30 border-dashed">
+						<div>Lowest</div>
+						<div>{{ daily_history.lowest }}</div>
+					</div>
+					<div class="flex flex-row justify-between border-b-1 border-slate-800/30 border-dashed">
+						<div>Difference</div>
+						<div>{{ daily_history.difference }}</div>
+					</div>
+					<div class="flex flex-row justify-between border-b-1 border-slate-800/30 border-dashed">
+						<div>Average</div>
+						<div>{{ daily_history.average }}</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
-	<h2 class="text-center">Daily Overview&nbsp;({{ daily_overview["Date Time"]["0"] | datetime("date") }})</h2>
-	<div class="grid grid-cols-3 grid-rows-3 gap-3 px-3 py-3 mx-4 my-3 border-2 border-black rounded-lg ">
-		{% for key in daily_overview %}
-			{% if key != "Date Time" and key != "Month" %}
-				<div class="flex flex-col">
-					{% if key == "52 Week Range" or key == "Day Range" %}
-						<span>{{ key }}</span>
-						<span>{{ daily_overview[key]["0"] | split }}</span>
-					{% else %}
-						<span>{{ key }}</span>
-						<span>{{ daily_overview[key]["0"] }}</span>
-					{% endif %}
-				</div>
-			{% endif %}
-		{% endfor %}
-	</div>
 	<script>
-		const ctx = document.getElementById('myChart');
+		const ctx = document.getElementById('myChart').getContext('2d');
 		const hourlyOverviewTimeStamps = JSON.parse('{{ hourly_overview_chart.columns | tojson }}')
 		const hourlyOverviewData = JSON.parse('{{ hourly_overview_chart.data | tojson }}')
+		
+		function priceToFloat(priceStr) {
+			if (priceStr.indexOf(",") !== -1) {
+				const [beforeComma, afterComma] = priceStr.split(",")
+				return Number(beforeComma + afterComma)
+			} else {
+				return Number(priceStr)
+			}
+		}
+
+		let lastPriceStr = "{{ hourly_overview.last_price }}"
 		let chartData = []
+		let baselineData = []
 		for (let i = 0; i < hourlyOverviewTimeStamps.length; i++){
+			let dataStr = hourlyOverviewData[i]
+			let dataFloat = priceToFloat(dataStr)
+			let lastPriceFloat = priceToFloat(lastPriceStr)
 			chartData.push({
 				x: hourlyOverviewTimeStamps[i],
-				y: hourlyOverviewData[i]
+				y: dataFloat
+			})
+			baselineData.push({
+				x: hourlyOverviewTimeStamps[i],
+				y: lastPriceFloat
 			})
 		}
+
+		var gradient = ctx.createLinearGradient(0, 0, 0, 200)
+		let borderColor = ''
+		if ("{{ hourly_overview.price_change_percent[0] == '+'}}" == "True"){
+			gradient.addColorStop(0, 'rgba(0,227,150, 0.5)')   
+			gradient.addColorStop(1, 'rgba(0,227,150, 0)')
+			borderColor = 'rgba(0,227,150, 1)'
+		} else {
+			gradient.addColorStop(0, 'rgba(255,69,96, 0.5)')   
+			gradient.addColorStop(1, 'rgba(255,69,96, 0)')
+			borderColor = 'rgba(255,69,96, 1)'
+		}
+
 		new Chart(ctx, {
 			type: 'line',
 			data: {
@@ -116,7 +173,19 @@
 						data: chartData,
 						borderWidth: 2,
 						tension: 0.1,
-						fill: true
+						fill: true,
+						borderColor: borderColor,
+						backgroundColor: gradient
+					},
+					{
+						label: "Last Price",
+						data: baselineData,
+						borderWidth: 2,
+						tension: 0.1,
+						fill: false,
+						borderColor: "#2C4C60",
+						borderDash: [6, 4],
+						pointStyle: false
 					}
 				]
 			},
@@ -141,6 +210,7 @@
 					},
 					y: {
 						beginAtZero: false,
+						position: 'right'
 					}
 				},
 				plugins: {

@@ -6,20 +6,23 @@
 		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/date-fns@4.1.0/cdn.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
 	</head>
 	<body>
-		<header class="flex justify-between border-2 border-black py-2 px-2">
+		<header class="flex justify-between border-b-1 border-slate-200 py-2 px-2">
 			<h1 class="">Commodity Tracker</h1>
 			<ul class="flex gap-x-2">
 				<li class="">
 					<a href="{{ url_for('get_commodity_data', commodity='gold') }}">Futures</a>
 				</li>
-				<li class="">
+				<!-- <li class="">
 					<a href="{{ url_for('about') }}">About</a>
-				</li>
+				</li> -->
 			</ul>
 		</header>
-		<div id="content">
+		<div class="bg-white" id="content">
 			{% block content %}
 			{% endblock %}
 		</div>

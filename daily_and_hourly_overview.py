@@ -7,7 +7,9 @@ import pytz
 import requests
 
 def has_been_a_day():
-	commodity_path = Path.cwd() / 'copper'
+	commodities_path = Path.cwd() / 'commodities'
+	commodities_path.mkdir(exist_ok=True)
+	commodity_path = commodities_path / 'copper'
 	commodity_path.mkdir(exist_ok=True)
 	daily_series_path = commodity_path / 'copper-daily-overview.pkl'
 	if daily_series_path.exists():
@@ -18,17 +20,20 @@ def has_been_a_day():
 			return True 
 		else:
 			return False
-	# To not prevent creating of file
+	# To not prevent initial creation of file
 	return True
 
 def save_data(daily_series, hourly_df, commodity, has_been_a_day):
-	commodity_path = Path.cwd() / commodity
+	commodities_path = Path.cwd() / 'commodities'
+	commodities_path.mkdir(exist_ok=True)
+	commodity_path = commodities_path / commodity
 	commodity_path.mkdir(exist_ok=True)
 	hourly_df_path = commodity_path / f'{commodity}-hourly-overview.pkl'
-
 	if hourly_df_path.exists():
 		loaded_df = pd.read_pickle(hourly_df_path)
+		print(loaded_df.head())
 		concatenated_df = pd.concat([hourly_df, loaded_df])
+		print(concatenated_df.head())
 		if concatenated_df.shape[0] > 96:
 			concatenated_df = concatenated_df[:96] 
 		concatenated_df.to_pickle(hourly_df_path)
@@ -88,10 +93,10 @@ def scrape_overview_data(session, url, has_been_a_day):
 				daily_series_data.append(rollover_day)
 			daily_series = pd.DataFrame(data=daily_series_data, index=daily_series_indices)
 
-
 		hourly_df_record = [formatted_isoformat] + header_data
 		hourly_df_columns = ['Date Time', 'Commodity Name', 'Last Price', 'Price Change', 'Price Change Percent']
 		hourly_df = pd.DataFrame(data=[hourly_df_record], columns=hourly_df_columns)
+		print(hourly_df.head())
 		return daily_series, hourly_df
 	except requests.exceptions.HTTPError as e:
 		print(f"HTTP Error: {e}")
@@ -106,10 +111,10 @@ def get_commodity_overview(session, base_url, commodities):
 		save_data(daily_series, hourly_df, commodity, has_been_a_day_flag)
 
 if __name__ == "__main__":
-    session = requests.Session()
-    session.headers.update({'User-Agent': 'commodity-futures-bot/1.0'})
+	session = requests.Session()
+	session.headers.update({'User-Agent': 'commodity-futures-bot/1.0'})
 
-    commodities = ['copper', 'crude-oil', 'gold', 'natural-gas']
-    base_url = 'https://www.investing.com/commodities/'
-    
-    get_commodity_overview(session, base_url, commodities)
+	commodities = ['copper', 'crude-oil', 'gold', 'natural-gas']
+	base_url = 'https://www.investing.com/commodities/'
+
+	get_commodity_overview(session, base_url, commodities)
