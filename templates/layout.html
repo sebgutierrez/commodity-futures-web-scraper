@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<title>Item Details</title>
-		<link href="{{ url_for('static', path='/styles.css') }}" rel="stylesheet">
+		<link href="{{ url_for('static', path='/output.css') }}" rel="stylesheet">
 		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/date-fns@4.1.0/cdn.min.js"></script>
 		<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -11,14 +11,14 @@
 		<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
 	</head>
 	<body>
-		<header class="bg-white flex justify-between border-b-1 border-slate-200 py-6 px-4">
-			<h1 class="font-bold ml-6"><a class="text-[#0069FF] text-lg" href="{{ url_for('index') }}">Commodity Tracker</a></h1>
-			<ul class="flex mr-2 gap-x-3">
+		<header class="bg-white flex justify-between border-b-1 border-slate-200 py-6 px-4 md:px-4">
+			<h1 class="font-bold md:ml-6"><a class="text-[#0069FF] text-lg" href="{{ url_for('index') }}">Commodity Tracker</a></h1>
+			<ul class="flex mr-0 md:mr-2 gap-x-3">
 				<li class="">
-					<a class="text-lg text-[#4D5B7C] font-bold p-2 hover:bg-slate-100 hover:rounded-xl" href="{{ url_for('index') }}">Home</a>
+					<a class="text-lg text-[#4D5B7C] p-2 hover:bg-slate-100 hover:rounded-xl" href="{{ url_for('index') }}">Home</a>
 				</li>
 				<li class="">
-					<a class="text-lg text-[#4D5B7C] font-bold p-2 hover:bg-slate-100 hover:rounded-xl" href="{{ url_for('get_commodity_data', commodity='gold') }}">Futures</a>
+					<a class="text-lg text-[#4D5B7C] p-2 hover:bg-slate-100 hover:rounded-xl" href="{{ url_for('get_commodity_data', commodity='gold') }}">Futures</a>
 				</li>
 			</ul>
 		</header>

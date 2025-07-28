@@ -7,7 +7,7 @@ import pytz
 import requests
 
 def has_been_a_day(commodities_path):
-	daily_series_path = commodity_path / 'copper' / 'copper-daily-overview.pkl'
+	daily_series_path = commodities_path / 'copper' / 'copper-daily-overview.pkl'
 	if daily_series_path.exists(): 
 		loaded_series = pd.read_pickle(daily_series_path)
 		last_recorded_date = datetime.strptime(loaded_series[0]['Date Time'], "%m/%d/%Y %I:%M %p").date()
@@ -96,8 +96,10 @@ def get_commodity_overview(session, base_url, commodities):
 	has_been_a_day_flag = has_been_a_day(commodities_path)
 	for commodity in commodities:
 		overview_url = base_url + commodity
-		hourly_df_path = commodities_path / commodity / f'{commodity}-hourly-overview.pkl'
-		daily_series_path = commodities_path / commodity / f'{commodity}-daily-overview.pkl'
+		commodity_path = commodities_path / commodity
+		commodity_path.mkdir(exist_ok=True)
+		hourly_df_path = commodity_path / f'{commodity}-hourly-overview.pkl'
+		daily_series_path = commodity_path / f'{commodity}-daily-overview.pkl'
 		daily_series, hourly_df = scrape_overview_data(session, overview_url, has_been_a_day_flag)
 		save_overview_data(daily_series, hourly_df, hourly_df_path, daily_series_path, has_been_a_day_flag)
 

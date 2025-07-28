@@ -9,7 +9,7 @@ def hundredth_precision(float_str):
 	split = float_str.split('.')
 	if len(split[1]) > 1:
 		return split[0] + '.' + split[1][:2]
-	else
+	else:
 		return float_str
 
 def strip_commas(string):
@@ -82,7 +82,9 @@ def get_commodity_history(session, base_url, commodities):
 	commodities_path.mkdir(exist_ok=True)
 	for commodity in commodities:
 		history_url = base_url + commodity + '-historical-data'
-		history_df_path = commodities_path / commodity / f'{commodity}-daily-history.pkl'
+		commodity_path = commodities_path / commodity
+		commodity_path.mkdir(exist_ok=True)
+		history_df_path = commodity_path / f'{commodity}-daily-history.pkl'
 		history_df = None
 		if history_df_path.exists():
 			history_df = scrape_historical_data(session, history_url, dataset_exists=True)
