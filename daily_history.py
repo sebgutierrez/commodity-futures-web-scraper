@@ -8,9 +8,9 @@ import requests
 def hundredth_precision(float_str):
 	split = float_str.split('.')
 	if len(split[1]) > 1:
-		hundredths = split[0] + '.' + split[1][:2] 
-		return hundredths
-	return float_str
+		return split[0] + '.' + split[1][:2]
+	else
+		return float_str
 
 def strip_commas(string):
 	stripped = ''
@@ -19,12 +19,7 @@ def strip_commas(string):
 			stripped += char
 	return stripped
 
-def save_history_df(df, filename, commodity):
-	commodities_path = Path.cwd() / 'commodities'
-	commodities_path.mkdir(exist_ok=True)
-	commodity_path = commodities_path / commodity
-	commodity_path.mkdir(exist_ok=True)
-	df_path = commodity_path / filename
+def save_history_data(df, df_path):
 	if df_path.exists():
 		loaded_df = pd.read_pickle(df_path)
 		concatenated_df = pd.concat([df, loaded_df])
@@ -83,24 +78,23 @@ def scrape_historical_data(session, url, dataset_exists=False):
 		print(f"An error occurred: {e}")
 
 def get_commodity_history(session, base_url, commodities):
+	commodities_path = Path.cwd() / "commodities"
+	commodities_path.mkdir(exist_ok=True)
 	for commodity in commodities:
 		history_url = base_url + commodity + '-historical-data'
-		commodities_path = Path.cwd() / "commodities"
-		commodity_path = commodities_path / commodity
-		history_filename = f'{commodity}-daily-history.pkl'
-		history_df_path = commodity_path / history_filename
+		history_df_path = commodities_path / commodity / f'{commodity}-daily-history.pkl'
 		history_df = None
 		if history_df_path.exists():
 			history_df = scrape_historical_data(session, history_url, dataset_exists=True)
 		else:
 			history_df = scrape_historical_data(session, history_url)
-		save_history_df(history_df, history_filename, commodity)
+		save_history_data(history_df, history_df_path)
 
 if __name__ == "__main__":
-    session = requests.Session()
-    session.headers.update({'User-Agent': 'commodity-futures-bot/1.0'})
+	session = requests.Session()
+	session.headers.update({'User-Agent': 'commodity-futures-bot/1.0'})
 
-    commodities = ['copper', 'crude-oil', 'gold', 'natural-gas']
-    base_url = 'https://www.investing.com/commodities/'
-    
-    get_commodity_history(session, base_url, commodities)
+	commodities = ['copper', 'crude-oil', 'gold', 'natural-gas']
+	base_url = 'https://www.investing.com/commodities/'
+
+	get_commodity_history(session, base_url, commodities)

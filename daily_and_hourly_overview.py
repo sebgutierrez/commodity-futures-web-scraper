@@ -6,13 +6,9 @@ import pickle
 import pytz
 import requests
 
-def has_been_a_day():
-	commodities_path = Path.cwd() / 'commodities'
-	commodities_path.mkdir(exist_ok=True)
-	commodity_path = commodities_path / 'copper'
-	commodity_path.mkdir(exist_ok=True)
-	daily_series_path = commodity_path / 'copper-daily-overview.pkl'
-	if daily_series_path.exists():
+def has_been_a_day(commodities_path):
+	daily_series_path = commodity_path / 'copper' / 'copper-daily-overview.pkl'
+	if daily_series_path.exists(): 
 		loaded_series = pd.read_pickle(daily_series_path)
 		last_recorded_date = datetime.strptime(loaded_series[0]['Date Time'], "%m/%d/%Y %I:%M %p").date()
 		todays_date = datetime.today().date()
@@ -23,17 +19,10 @@ def has_been_a_day():
 	# To not prevent initial creation of file
 	return True
 
-def save_data(daily_series, hourly_df, commodity, has_been_a_day):
-	commodities_path = Path.cwd() / 'commodities'
-	commodities_path.mkdir(exist_ok=True)
-	commodity_path = commodities_path / commodity
-	commodity_path.mkdir(exist_ok=True)
-	hourly_df_path = commodity_path / f'{commodity}-hourly-overview.pkl'
+def save_overview_data(daily_series, hourly_df, hourly_df_path, daily_series_path, has_been_a_day):
 	if hourly_df_path.exists():
 		loaded_df = pd.read_pickle(hourly_df_path)
-		print(loaded_df.head())
 		concatenated_df = pd.concat([hourly_df, loaded_df])
-		print(concatenated_df.head())
 		if concatenated_df.shape[0] > 96:
 			concatenated_df = concatenated_df[:96] 
 		concatenated_df.to_pickle(hourly_df_path)
@@ -41,7 +30,6 @@ def save_data(daily_series, hourly_df, commodity, has_been_a_day):
 		hourly_df.to_pickle(hourly_df_path)
 
 	if daily_series is not None and has_been_a_day:
-		daily_series_path = commodity_path / f'{commodity}-daily-overview.pkl'
 		daily_series.to_pickle(daily_series_path)
 
 def scrape_overview_data(session, url, has_been_a_day):
@@ -96,7 +84,6 @@ def scrape_overview_data(session, url, has_been_a_day):
 		hourly_df_record = [formatted_isoformat] + header_data
 		hourly_df_columns = ['Date Time', 'Commodity Name', 'Last Price', 'Price Change', 'Price Change Percent']
 		hourly_df = pd.DataFrame(data=[hourly_df_record], columns=hourly_df_columns)
-		print(hourly_df.head())
 		return daily_series, hourly_df
 	except requests.exceptions.HTTPError as e:
 		print(f"HTTP Error: {e}")
@@ -104,11 +91,15 @@ def scrape_overview_data(session, url, has_been_a_day):
 		print(f"An error occurred: {e}")
 
 def get_commodity_overview(session, base_url, commodities):
-	has_been_a_day_flag = has_been_a_day()
+	commodities_path = Path.cwd() / "commodities"
+	commodities_path.mkdir(exist_ok=True)
+	has_been_a_day_flag = has_been_a_day(commodities_path)
 	for commodity in commodities:
 		overview_url = base_url + commodity
+		hourly_df_path = commodities_path / commodity / f'{commodity}-hourly-overview.pkl'
+		daily_series_path = commodities_path / commodity / f'{commodity}-daily-overview.pkl'
 		daily_series, hourly_df = scrape_overview_data(session, overview_url, has_been_a_day_flag)
-		save_data(daily_series, hourly_df, commodity, has_been_a_day_flag)
+		save_overview_data(daily_series, hourly_df, hourly_df_path, daily_series_path, has_been_a_day_flag)
 
 if __name__ == "__main__":
 	session = requests.Session()
