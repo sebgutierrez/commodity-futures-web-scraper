@@ -90,12 +90,14 @@ async def about(request: Request):
 async def get_commodity_data(request: Request, commodity: str):
     daily_history_df, daily_overview_series, hourly_overview_df = load_commodity_data(commodity)
 
+    if daily_history_df is None or daily_overview_series is None or hourly_overview_df is None:
+        return templates.TemplateResponse(request=request, name="error.html", context={"request": request})
+
     daily_history_columns = list(daily_history_df.columns.values)
     daily_history_highest = round(float(daily_history_df["High"].max()), 2)
     daily_history_lowest = round(float(daily_history_df["Low"].min()), 2)
     daily_history_difference = round(float(daily_history_highest - daily_history_lowest), 2)
     daily_history_average = round(float(daily_history_df["Price"].mean()), 2)
-
     daily_history_json = daily_history_df.to_json(orient='values', indent=4)
     formatted_daily_history_data = json.loads(daily_history_json)
 
@@ -105,7 +107,6 @@ async def get_commodity_data(request: Request, commodity: str):
     hourly_overview_timestamps = list(hourly_overview_df['Date Time'].values)
     hourly_overview_data = list(hourly_overview_df['Last Price'].values)
     hourly_overview_commodity_name = hourly_overview_df['Commodity Name'].values[0]
-
     hourly_overview_date_time = hourly_overview_df['Date Time'].values[0]
     hourly_overview_last_price = hundredth_precision(hourly_overview_df['Last Price'].values[0])
     hourly_overview_price_change = hundredth_precision(hourly_overview_df['Price Change'].values[0])
@@ -115,12 +116,13 @@ async def get_commodity_data(request: Request, commodity: str):
     for cm in ["copper", "crude-oil", "gold", "natural-gas"]:
         if cm != commodity:
             df = load_df(cm, "hourly-overview")
-            previews[cm] = {
-                "commodity_name": cm,
-                "commodity_full_name": df['Commodity Name'].values[0],
-                "last_price": hundredth_precision(df['Last Price'].values[0]),
-                "price_change_percent": df['Price Change Percent'].values[0]
-            }
+            if df is not None:
+                previews[cm] = {
+                    "commodity_name": cm,
+                    "commodity_full_name": df['Commodity Name'].values[0],
+                    "last_price": hundredth_precision(df['Last Price'].values[0]),
+                    "price_change_percent": df['Price Change Percent'].values[0]
+                }
 
     response_data = {
         "commodity": hourly_overview_commodity_name,
