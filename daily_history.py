@@ -4,6 +4,7 @@ from pathlib import Path
 import pickle
 import pytz
 import requests
+import sys
 
 def hundredth_precision(float_str):
 	split = float_str.split('.')
@@ -77,12 +78,11 @@ def scrape_historical_data(session, url, dataset_exists=False):
 	except requests.exceptions.RequestException as e:
 		print(f"An error occurred: {e}")
 
-def get_commodity_history(session, base_url, commodities):
-	commodities_path = Path.cwd() / "commodities"
-	commodities_path.mkdir(exist_ok=True)
+def get_commodity_history(session, base_url, commodities, commodities_dir):
+	commodities_dir.mkdir(exist_ok=True)
 	for commodity in commodities:
 		history_url = base_url + commodity + '-historical-data'
-		commodity_path = commodities_path / commodity
+		commodity_path = commodities_dir / commodity
 		commodity_path.mkdir(exist_ok=True)
 		history_df_path = commodity_path / f'{commodity}-daily-history.pkl'
 		history_df = None
@@ -99,4 +99,6 @@ if __name__ == "__main__":
 	commodities = ['copper', 'crude-oil', 'gold', 'natural-gas']
 	base_url = 'https://www.investing.com/commodities/'
 
-	get_commodity_history(session, base_url, commodities)
+	if len(sys.argv) > 1:
+		commodities_dir = sys.argv[1]
+		get_commodity_history(session, base_url, commodities, commodities_dir)

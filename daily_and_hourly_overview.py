@@ -5,6 +5,7 @@ from pathlib import Path
 import pickle
 import pytz
 import requests
+import sys
 
 def has_been_a_day(commodities_path):
 	daily_series_path = commodities_path / 'copper' / 'copper-daily-overview.pkl'
@@ -90,13 +91,12 @@ def scrape_overview_data(session, url, has_been_a_day):
 	except requests.exceptions.RequestException as e:
 		print(f"An error occurred: {e}")
 
-def get_commodity_overview(session, base_url, commodities):
-	commodities_path = Path.cwd() / "commodities"
-	commodities_path.mkdir(exist_ok=True)
-	has_been_a_day_flag = has_been_a_day(commodities_path)
+def get_commodity_overview(session, base_url, commodities, commodities_dir):
+	commodities_dir.mkdir(exist_ok=True)
+	has_been_a_day_flag = has_been_a_day(commodities_dir)
 	for commodity in commodities:
 		overview_url = base_url + commodity
-		commodity_path = commodities_path / commodity
+		commodity_path = commodities_dir / commodity
 		commodity_path.mkdir(exist_ok=True)
 		hourly_df_path = commodity_path / f'{commodity}-hourly-overview.pkl'
 		daily_series_path = commodity_path / f'{commodity}-daily-overview.pkl'
@@ -110,4 +110,6 @@ if __name__ == "__main__":
 	commodities = ['copper', 'crude-oil', 'gold', 'natural-gas']
 	base_url = 'https://www.investing.com/commodities/'
 
-	get_commodity_overview(session, base_url, commodities)
+	if len(sys.argv) > 1:
+		commodities_dir = sys.argv[1]
+		get_commodity_overview(session, base_url, commodities, commodities_dir)
