@@ -6,6 +6,6 @@ PYTHON_SCRIPT="/home/ubuntu/commodity-futures-web-scraper/daily_and_hourly_overv
 
 source "$VENV_PATH/bin/activate"
 
-python3 "$PYTHON_SCRIPT" /home/ubuntu/commodity-futures-web-scraper/commodities
+python3 "$PYTHON_SCRIPT" /home/ubuntu/commodity-futures-web-scraper
 
 deactivate

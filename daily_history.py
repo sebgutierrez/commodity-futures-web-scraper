@@ -100,5 +100,5 @@ if __name__ == "__main__":
 	base_url = 'https://www.investing.com/commodities/'
 
 	if len(sys.argv) > 1:
-		commodities_dir = sys.argv[1]
+		commodities_dir = Path(sys.argv[1])
 		get_commodity_history(session, base_url, commodities, commodities_dir)
